@@ -16,6 +16,8 @@ draft_list = cr.list_drafts(q=q, maxResults=10)
 drafts = [cr.get_draft(d['id'], format='string') for d in draft_list['drafts']]
 if len(drafts)==1:
     draft = drafts[0]
-    print(draft['message']['string'])
+    template_id = draft['id']
+    # print(draft['message']['string'])
 
+new_draft = cr.create_draft_from_template()
 # print(draft)

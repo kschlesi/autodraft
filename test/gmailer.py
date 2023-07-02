@@ -90,8 +90,12 @@ class GMailer():
     def list_drafts(self, **kwargs):
         return self.account.users().drafts().list(userId="me", **kwargs).execute()
         
-    def create_draft_from_template(self, draft_template, **kwargs):
-        return draft_template
+    def create_draft_from_template(self, template_id, replace_tuples=[], **kwargs):
+        decoded_template = self.get_draft(template_id, format='string')
+        new_message = decoded_template['message']['string']
+        for rf, rt in replace_tuples:
+            new_message = new_message.replace(rf, rt, 1)
+        return new_message
     
 def _message_text_to_b64(message):
     return base64.urlsafe_b64encode(message.as_bytes()).decode()
