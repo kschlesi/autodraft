@@ -60,12 +60,9 @@ class GMailer():
             message['From'] = 'kschlesi42@gmail.com'
             message['Subject'] = 'Automated draft test 1'
 
-            # encoded message
-            encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
-
             create_message = {
                 'message': {
-                    'raw': encoded_message
+                    'raw': _message_text_to_b64(message)
                 }
             }
             
@@ -80,14 +77,27 @@ class GMailer():
 
         return draft
     
-    def get_raw_draft(self, draft_id, format='raw', **kwargs):
-        return self.account.users().drafts().get(userId="me", id=draft_id, format=format).execute()
+    def get_raw_draft(self, draft_id, **kwargs):
+        return self.account.users().drafts().get(userId="me", id=draft_id, format='raw').execute()
+    
+    def get_draft(self, draft_id, format='raw', **kwargs):
+        raw_draft = self.get_raw_draft(draft_id)
+        if format=='string':
+            raw_draft['message']['string'] = _message_b64_to_text(raw_draft['message']['raw'])
+        return raw_draft
+
     
     def list_drafts(self, **kwargs):
         return self.account.users().drafts().list(userId="me", **kwargs).execute()
         
     def create_draft_from_template(self, draft_template, **kwargs):
         return draft_template
+    
+def _message_text_to_b64(message):
+    return base64.urlsafe_b64encode(message.as_bytes()).decode()
+
+def _message_b64_to_text(message):
+    return base64.urlsafe_b64decode(message.encode()).decode()
 
 
 # def parse_gtime(dt_str, type='datetime'):
