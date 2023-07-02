@@ -49,20 +49,17 @@ class GMailer():
             print(f'An error occurred: {error}')
             return label_result.get('items', [])
         
-    def create_draft(self, content='This is automated draft mail', **kwargs):
+    def create_draft(self, message, **kwargs):
         '''create an email draft'''
         try:
-            message = EmailMessage()
-
-            message.set_content(content)
-
-            message['To'] = 'kschlesi42@gmail.com'
-            message['From'] = 'kschlesi42@gmail.com'
-            message['Subject'] = 'Automated draft test 1'
-
+            if isinstance(message, str):
+                raw_message = _message_text_to_b64(message)
+            else:
+                raw_message = _message_obj_to_b64(message)
+            
             create_message = {
                 'message': {
-                    'raw': _message_text_to_b64(message)
+                    'raw': raw_message
                 }
             }
             
@@ -95,10 +92,15 @@ class GMailer():
         new_message = decoded_template['message']['string']
         for rf, rt in replace_tuples:
             new_message = new_message.replace(rf, rt, 1)
-        return new_message
+        print(new_message)
+        draft = self.create_draft(new_message)
+        return draft
     
-def _message_text_to_b64(message):
+def _message_obj_to_b64(message):
     return base64.urlsafe_b64encode(message.as_bytes()).decode()
+
+def _message_text_to_b64(message):
+    return base64.urlsafe_b64encode(message.encode()).decode()
 
 def _message_b64_to_text(message):
     return base64.urlsafe_b64decode(message.encode()).decode()
