@@ -1,0 +1,40 @@
+#!/usr/bin/env python
+
+#import asyncio
+import autodraft
+
+def a_main_func():
+    ## create instances
+    print('creating calendar...')
+    cr = autodraft.CalendarReader(credentials_path='var/seattle_sunrise/secrets')
+    print('calendar created!')
+    lf = autodraft.bulbz_control(
+            headers_file='/var/seattle_sunrise/secrets/hass_auth.yaml',
+            bulbz_list=[
+                'light.linear_lb60z1_dimmable_led_light_bulb_level',
+            ],
+            hass_api_map={
+                'host': 'http://192.168.0.11',
+                'port': 8123,
+                'api_uri': 'api',
+                'operations': {
+                    'turn_on': 'services/light/turn_on',
+                    'turn_off': 'services/light/turn_off',
+                },
+            },
+         )
+    lf.action_map={
+        'Wake Up': lf.sunrise,
+    }
+    elc = autodraft.event_loop_control()
+    ## bind them
+    elc.get_events = cr.get_scheduled_events
+    actor_map = {
+        'Bedroom Light': lf,
+    }
+    elc.actor_map = actor_map
+    ## execute
+    elc()
+
+if __name__ == "__main__":
+    a_main_func()
