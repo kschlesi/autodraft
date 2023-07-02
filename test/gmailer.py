@@ -82,6 +82,9 @@ class GMailer():
     
     def get_raw_draft(self, draft_id, format='raw', **kwargs):
         return self.account.users().drafts().get(userId="me", id=draft_id, format=format).execute()
+    
+    def list_drafts(self, **kwargs):
+        return self.account.users().drafts().list(userId="me", **kwargs).execute()
         
     def create_draft_from_template(self, draft_template, **kwargs):
         return draft_template
