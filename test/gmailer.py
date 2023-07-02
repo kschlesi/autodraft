@@ -68,7 +68,7 @@ class GMailer():
                     'raw': encoded_message
                 }
             }
-            # pylint: disable=E1101
+            
             draft = self.account.users().drafts().create(userId="me",
                                                          body=create_message).execute()
 
@@ -79,6 +79,9 @@ class GMailer():
             draft = None
 
         return draft
+    
+    def get_raw_draft(self, draft_id, format='raw', **kwargs):
+        return self.account.users().drafts().get(userId="me", id=draft_id, format=format).execute()
         
     def create_draft_from_template(self, draft_template, **kwargs):
         return draft_template
