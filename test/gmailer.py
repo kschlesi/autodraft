@@ -7,12 +7,14 @@ __all__ = []
 import datetime
 import requests
 import pytz
+import re
 from googleapiclient.discovery import build
 from httplib2 import Http
 from oauth2client import file, client, tools
 from googleapiclient.errors import HttpError
 import base64
 from email.message import EmailMessage
+from email.mime.text import MIMEText
 
 __all__.append('GMailer')
 class GMailer():
@@ -50,7 +52,7 @@ class GMailer():
             return label_result.get('items', [])
         
     def create_draft(self, message, **kwargs):
-        '''create an email draft'''
+        '''create an email draft, given an email message object'''
         try:
             if isinstance(message, str):
                 raw_message = _message_text_to_b64(message)
@@ -75,24 +77,44 @@ class GMailer():
         return draft
     
     def get_raw_draft(self, draft_id, **kwargs):
-        return self.account.users().drafts().get(userId="me", id=draft_id, format='raw').execute()
+        return 
     
     def get_draft(self, draft_id, format='raw', **kwargs):
-        raw_draft = self.get_raw_draft(draft_id)
-        if format=='string':
-            raw_draft['message']['string'] = _message_b64_to_text(raw_draft['message']['raw'])
-        return raw_draft
-
+        # raw_draft = self.get_raw_draft(draft_id)
+        # if format=='string':
+        #     raw_draft['message']['string'] = _message_b64_to_text(raw_draft['message']['raw'])
+        return self.account.users().drafts().get(userId="me", id=draft_id, format=format).execute()
+    
+    def get_message(self, message_id, format, **kwargs):
+        return self.account.users().drafts().get(userId="me", id=message_id, format=format).execute()
     
     def list_drafts(self, **kwargs):
         return self.account.users().drafts().list(userId="me", **kwargs).execute()
         
-    def create_draft_from_template(self, template_id, replace_tuples=[], **kwargs):
-        decoded_template = self.get_draft(template_id, format='string')
-        new_message = decoded_template['message']['string']
-        for rf, rt in replace_tuples:
-            new_message = new_message.replace(rf, rt, 1)
-        print(new_message)
+    def create_draft_from_template(
+            self
+            , template_id
+            , replace_tuples = []
+            , send_from = None
+            , send_to = None
+            , send_cc = None
+            , **kwargs):
+        template_message = self.get_draft(template_id, format='full')['message']
+        
+        # find the html from the template, decode, and replace
+        decoded_html = ''
+        for message_part in template_message['payload']['parts']:
+            if sum([1 if 'text/html' in h['value'] else 0 for h in message_part['headers']]) > 0:
+                decoded_html = _message_b64_to_text(message_part['body']['data'])
+                for rf, rt in replace_tuples:
+                    decoded_html = decoded_html.replace(rf, rt, 1)
+                message_part['body']['data'] = _message_text_to_b64(decoded_html)
+
+        if send_from is None:
+            send_from = [h['value'] for h in template_message['payload']['headers'] if h['name']=='From'][0]
+        subject = [h['value'] for h in template_message['payload']['headers'] if h['name']=='Subject'][0]
+        
+        new_message = _create_message(send_from, send_to, subject, content=decoded_html, text_type='html', send_cc=send_cc)
         draft = self.create_draft(new_message)
         return draft
     
@@ -104,6 +126,29 @@ def _message_text_to_b64(message):
 
 def _message_b64_to_text(message):
     return base64.urlsafe_b64decode(message.encode()).decode()
+
+def _create_message(send_from, send_to, subject, content, text_type=None, send_cc=None):
+    """Create a message for an email.
+
+    Args:
+    sender: Email address of the sender.
+    to: Email address of the receiver.
+    subject: The subject of the email message.
+    message_text: The text of the email message.
+
+    Returns:
+    An object containing a base64url encoded email object.
+    """
+    if text_type:
+        message = MIMEText(content, text_type)
+    else:
+        message = MIMEText(content)
+    message['to'] = send_to
+    message['from'] = send_from
+    message['subject'] = subject
+    message['cc'] = send_cc
+    #print(type(base64.urlsafe_b64encode(message.as_string())))
+    return message #base64.urlsafe_b64encode(message.as_string())
 
 
 # def parse_gtime(dt_str, type='datetime'):
